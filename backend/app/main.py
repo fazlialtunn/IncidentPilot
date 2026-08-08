@@ -7,10 +7,11 @@ import os
 
 app = FastAPI(title='IncidentPilot')
 
+db.init_db()
+
 
 @app.on_event('startup')
 def startup():
-    db.init_db()
     # seed if empty
     from .db import SessionLocal
     s = SessionLocal()

@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Request, BackgroundTasks, HTTPException
 from fastapi.responses import JSONResponse, HTMLResponse
-from . import db, services, seed
+from . import db, services, seed, models
 from .schemas import AlertPayload
 import uvicorn
 import os
@@ -50,12 +50,30 @@ def get_incident(incident_id: int):
     inc = services.get_incident(incident_id)
     if not inc:
         raise HTTPException(status_code=404, detail='not found')
-    # load events
     from .db import SessionLocal
     s = SessionLocal()
-    evs = s.query(db.Base.metadata.tables['incident_events']).filter_by(incident_id=incident_id).all() if 'incident_events' in db.Base.metadata.tables else []
+    evs = s.query(models.IncidentEvent).filter(models.IncidentEvent.incident_id==incident_id).order_by(models.IncidentEvent.created_at).all()
+    timeline = [{"id": e.id, "type": e.type, "payload": e.payload, "created_at": e.created_at.isoformat()} for e in evs]
     s.close()
-    return {'id':inc.id,'status':inc.status,'severity':inc.severity,'summary':inc.summary,'suspected_cause':inc.suspected_cause}
+    return {'id':inc.id,'status':inc.status,'severity':inc.severity,'summary':inc.summary,'suspected_cause':inc.suspected_cause,'timeline': timeline}
+
+
+@app.post('/incidents/{incident_id}/action')
+def incident_action(incident_id: int, payload: dict):
+    # payload: { action: str, user: str, note?: str }
+    action = payload.get('action')
+    user = payload.get('user','demo-user')
+    note = payload.get('note')
+    if not action:
+        raise HTTPException(status_code=400, detail='action required')
+    ev = services.perform_action(incident_id, action, user, note)
+    return {'event_id': ev.id}
+
+
+@app.get('/services/{service_name}/suspects')
+def suspects(service_name: str):
+    ranked = services.rank_commits_for_service(service_name)
+    return {'service': service_name, 'suspects': ranked}
 
 
 @app.post('/simulate/demo')

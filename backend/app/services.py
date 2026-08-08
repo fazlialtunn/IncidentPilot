@@ -62,3 +62,44 @@ def add_incident_event(incident_id:int, type:str, payload:Dict[str,Any]):
     db.refresh(ev)
     db.close()
     return ev
+
+def rank_commits_for_service(service_name: str, limit: int = 5) -> List[Dict[str,Any]]:
+    db = SessionLocal()
+    svc = db.query(models.Service).filter(models.Service.name==service_name).first()
+    if not svc:
+        db.close()
+        return []
+    commits = db.query(models.Commit).filter(models.Commit.service_id==svc.id).order_by(desc(models.Commit.timestamp)).limit(50).all()
+    deployments = db.query(models.Deployment).filter(models.Deployment.service_id==svc.id).order_by(desc(models.Deployment.deployed_at)).limit(10).all()
+    recent_deploy_shas = {d.commit_sha for d in deployments}
+    ranked: List[Dict[str,Any]] = []
+    for c in commits:
+        score = 0.0
+        # recency score (recent commits score higher)
+        age_hours = (datetime.utcnow() - c.timestamp).total_seconds()/3600.0
+        score += max(0, 5 - age_hours) * 1.0
+        # if included in recent deployment
+        if c.sha in recent_deploy_shas:
+            score += 5.0
+        # file signal: more files changed increases suspicion
+        score += min(len(c.files_changed or []), 5) * 0.5
+        ranked.append({"sha": c.sha, "message": c.message, "author": c.author, "files_changed": c.files_changed, "timestamp": c.timestamp.isoformat(), "score": score})
+    ranked = sorted(ranked, key=lambda x: x['score'], reverse=True)[:limit]
+    db.close()
+    return ranked
+
+def perform_action(incident_id:int, action:str, user:str, note:str=None) -> models.IncidentEvent:
+    # record an action in timeline and update incident state if needed
+    db = SessionLocal()
+    inc = db.query(models.Incident).filter(models.Incident.id==incident_id).first()
+    payload = {"action": action, "user": user, "note": note, "timestamp": datetime.utcnow().isoformat()}
+    ev = models.IncidentEvent(incident_id=incident_id, type='action', payload=payload)
+    db.add(ev)
+    if action == 'resolve' and inc:
+        inc.status = 'resolved'
+        inc.resolved = True
+        db.add(inc)
+    db.commit()
+    db.refresh(ev)
+    db.close()
+    return ev

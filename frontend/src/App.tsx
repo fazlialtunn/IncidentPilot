@@ -74,9 +74,22 @@ export default function App(){
   return (
     <div className="min-h-screen bg-neutral-900 text-white p-6 font-sans flex gap-6">
       <aside className="w-1/3">
-        <header className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold">IncidentPilot</h1>
-          <button onClick={runDemo} className="bg-red-600 px-3 py-1 rounded">Run demo</button>
+        <header className="flex items-center justify-between mb-4">
+          <div>
+            <h1 className="text-2xl font-bold">IncidentPilot</h1>
+            {demoActive && (
+              <div className="mt-2 inline-flex items-center gap-2 text-sm text-amber-300">
+                <span className="h-2.5 w-2.5 rounded-full bg-amber-400 animate-pulse" />
+                Demo run in progress…
+              </div>
+            )}
+          </div>
+          <button
+            onClick={runDemo}
+            disabled={loading || demoActive}
+            className={`px-3 py-1 rounded ${loading || demoActive ? 'bg-neutral-600 cursor-not-allowed' : 'bg-red-600 hover:bg-red-500'}`}>
+            {loading || demoActive ? 'Running demo…' : 'Run demo'}
+          </button>
         </header>
         <section>
           <h2 className="text-lg mb-2">Active incidents</h2>

@@ -2,6 +2,9 @@ import React, {useEffect, useState} from 'react'
 import axios from 'axios'
 import RunbookView from './components/RunbookView'
 import SlackSimulator from './components/SlackSimulator'
+import CommitCard from './components/CommitCard'
+import MetricChart from './components/MetricChart'
+import ProgressDemo from './components/ProgressDemo'
 
 type Incident = { id:number; status:string; severity:string; summary?:string }
 type IncidentDetail = { id:number; status:string; severity:string; summary?:string; suspected_cause?:string; timeline:any[] }
@@ -12,6 +15,8 @@ export default function App(){
   const [selected, setSelected] = useState<number| null>(null)
   const [detail, setDetail] = useState<IncidentDetail| null>(null)
   const [suspects, setSuspects] = useState<any[]>([])
+  const [analysis, setAnalysis] = useState<any>(null)
+  const [demoActive, setDemoActive] = useState(false)
 
   useEffect(()=>{ fetchIncidents() },[])
 
@@ -26,6 +31,7 @@ export default function App(){
 
   async function runDemo(){
     setLoading(true)
+    setDemoActive(true)
     try{
       const r = await axios.post('/api/simulate/demo')
       await fetchIncidents()
@@ -34,6 +40,7 @@ export default function App(){
       }
     }catch(e){console.error(e)}
     setLoading(false)
+    setTimeout(()=> setDemoActive(false), 4200)
   }
 
   async function selectIncident(id:number){
@@ -42,6 +49,8 @@ export default function App(){
     try{
       const r = await axios.get(`/api/incidents/${id}`)
       setDetail(r.data)
+      const a = await axios.get(`/api/incidents/${id}/analysis`)
+      setAnalysis(a.data.analysis || null)
       // fetch suspects for the service mentioned in first alert timeline if available
       const alertEvent = r.data.timeline?.find((t:any)=> t.type==='alert')
       const service = alertEvent?.payload?.service
@@ -123,16 +132,28 @@ export default function App(){
                   <div className="mt-1 text-white">{detail.suspected_cause || '—'}</div>
                 </div>
                 <div className="mb-3">
+                  <div className="text-sm text-neutral-300">Impact estimate</div>
+                  {analysis? (
+                    <div className="mt-2 bg-neutral-700 p-4 rounded">
+                      <MetricChart errorRate={analysis.impact_estimate?.error_rate} latencyMs={analysis.impact_estimate?.latency_ms} estimatedUsers={analysis.impact_estimate?.estimated_users} />
+                      <div className="text-xs text-neutral-400 mt-2">Confidence: {(analysis.confidence||0).toFixed(2)}</div>
+                    </div>
+                  ) : <div className="text-neutral-400">No analysis yet</div>}
+                </div>
+                <div className="mb-3">
+                  <div className="text-sm text-neutral-300">Demo progress</div>
+                  <div className="mt-2 p-3 bg-neutral-700 rounded">
+                    <ProgressDemo active={demoActive} />
+                  </div>
+                </div>
+                <div className="mb-3">
                   <div className="text-sm text-neutral-300">Slack-style brief</div>
                   <div className="mt-2 p-2 bg-neutral-700 rounded">{detail.summary}</div>
                 </div>
                 <h4 className="font-semibold">Top suspect commits</h4>
                 <div className="space-y-2 mt-2">
                   {suspects.map(s=> (
-                    <div key={s.sha} className="p-2 bg-neutral-700 rounded">
-                      <div className="text-sm font-medium">{s.sha} — {s.message}</div>
-                      <div className="text-xs text-neutral-400">score: {s.score.toFixed(1)}</div>
-                    </div>
+                    <CommitCard key={s.sha} commit={s} />
                   ))}
                   {suspects.length===0 && <div className="text-neutral-400">No suspects available</div>}
                 </div>

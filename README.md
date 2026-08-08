@@ -3,15 +3,15 @@
 IncidentPilot is an autonomous AI-assisted incident response demo. It ingests alerts, correlates deployments and commits, ranks suspect commits, retrieves relevant runbooks, estimates impact, produces a Slack-style brief, and generates a postmortem after resolution. The demo uses a deterministic local AI fallback when no OpenAI key is provided.
 
 
-**Architecture**
+## Architecture
 
 ```mermaid
 flowchart LR
-  A[Alerts webhook] --> B[FastAPI backend]
-  B --> C[(SQLite/SQLAlchemy)]
-  B --> D[AI Provider (OpenAI or local deterministic)]
-  B --> E[Frontend (React + Vite)]
-  E -->|API| B
+    A["Alert Webhook"] --> B["FastAPI Backend"]
+    B --> C[("SQLite / SQLAlchemy")]
+    B --> D["AI Provider<br/>OpenAI or Local Deterministic"]
+    B --> E["React + Vite Frontend"]
+    E -->|"REST API"| B
 ```
 
 ## Local setup

@@ -1,5 +1,7 @@
 import React, {useEffect, useState} from 'react'
 import axios from 'axios'
+import RunbookView from './components/RunbookView'
+import SlackSimulator from './components/SlackSimulator'
 
 type Incident = { id:number; status:string; severity:string; summary?:string }
 type IncidentDetail = { id:number; status:string; severity:string; summary?:string; suspected_cause?:string; timeline:any[] }
@@ -108,7 +110,7 @@ export default function App(){
                   {detail.timeline.map(t=> (
                     <div key={t.id} className="p-2 bg-neutral-700 rounded">
                       <div className="text-xs text-neutral-300">{t.type} • {t.created_at}</div>
-                      <pre className="text-sm mt-1 whitespace-pre-wrap">{JSON.stringify(t.payload,null,2)}</pre>
+                        <pre className="text-sm mt-1 whitespace-pre-wrap">{JSON.stringify(t.payload,null,2)}</pre>
                     </div>
                   ))}
                 </div>
@@ -133,6 +135,12 @@ export default function App(){
                     </div>
                   ))}
                   {suspects.length===0 && <div className="text-neutral-400">No suspects available</div>}
+                </div>
+                <div className="mt-4">
+                  <h4 className="font-semibold mb-2">Runbook</h4>
+                  <RunbookView query={(detail.timeline.find((t:any)=>t.type==='alert')?.payload?.service) || ''} />
+                  <h4 className="font-semibold mt-4 mb-2">Slack Simulator</h4>
+                  <SlackSimulator incidentId={detail.id} onPosted={()=> selectIncident(detail.id)} />
                 </div>
               </div>
             </section>

@@ -103,3 +103,42 @@ def perform_action(incident_id:int, action:str, user:str, note:str=None) -> mode
     db.refresh(ev)
     db.close()
     return ev
+
+
+def search_runbooks(query: str, limit: int = 5) -> List[Dict[str,Any]]:
+    db = SessionLocal()
+    q = query.lower() if query else ''
+    rbs = db.query(models.Runbook).all()
+    scored = []
+    for r in rbs:
+        score = 0
+        if q in (r.title or '').lower():
+            score += 5
+        if q in (r.content or '').lower():
+            score += 3
+        tags = ' '.join(r.tags or [])
+        if q in tags.lower():
+            score += 2
+        if score>0:
+            scored.append({"id": r.id, "title": r.title, "content": r.content, "tags": r.tags, "score": score})
+    scored = sorted(scored, key=lambda x: x['score'], reverse=True)[:limit]
+    db.close()
+    return scored
+
+
+def get_incident_analysis(incident_id:int) -> Dict[str,Any]:
+    db = SessionLocal()
+    ev = db.query(models.IncidentEvent).filter(models.IncidentEvent.incident_id==incident_id, models.IncidentEvent.type=='analysis').order_by(models.IncidentEvent.created_at.desc()).first()
+    db.close()
+    return ev.payload if ev else {}
+
+
+def post_slack_message(incident_id:int, message:str, user:str='simulator') -> models.IncidentEvent:
+    db = SessionLocal()
+    payload = {"message": message, "user": user, "timestamp": datetime.utcnow().isoformat()}
+    ev = models.IncidentEvent(incident_id=incident_id, type='slack', payload=payload)
+    db.add(ev)
+    db.commit()
+    db.refresh(ev)
+    db.close()
+    return ev

@@ -76,6 +76,30 @@ def suspects(service_name: str):
     return {'service': service_name, 'suspects': ranked}
 
 
+@app.get('/runbooks')
+def runbooks(query: str = ''):
+    items = services.search_runbooks(query)
+    return {'query': query, 'runbooks': items}
+
+
+@app.get('/incidents/{incident_id}/analysis')
+def incident_analysis(incident_id: int):
+    analysis = services.get_incident_analysis(incident_id)
+    return {'incident_id': incident_id, 'analysis': analysis}
+
+
+@app.post('/simulate/slack')
+def simulate_slack(payload: dict):
+    # payload: { incident_id: int, message: str, user?: str }
+    incident_id = payload.get('incident_id')
+    message = payload.get('message')
+    user = payload.get('user','simulator')
+    if not incident_id or not message:
+        raise HTTPException(status_code=400, detail='incident_id and message required')
+    ev = services.post_slack_message(incident_id, message, user)
+    return {'event_id': ev.id}
+
+
 @app.post('/simulate/demo')
 def run_demo(background_tasks: BackgroundTasks):
     # Simulate a progressive scenario via events

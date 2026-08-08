@@ -2,6 +2,7 @@
 
 IncidentPilot is an autonomous AI-assisted incident response demo. It ingests alerts, correlates deployments and commits, ranks suspect commits, retrieves relevant runbooks, estimates impact, produces a Slack-style brief, and generates a postmortem after resolution. The demo uses a deterministic local AI fallback when no OpenAI key is provided.
 
+
 **Architecture**
 
 ```mermaid

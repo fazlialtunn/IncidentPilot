@@ -60,4 +60,3 @@ pytest
 - Uses SQLAlchemy with SQLite for local development
 - AI provider abstraction. When `OPENAI_API_KEY` is set, OpenAI is used; otherwise a deterministic local provider produces structured output.
 - All AI outputs are validated and stored as incident events. Evidence is kept separate from inference.
-# IncidentPilot
